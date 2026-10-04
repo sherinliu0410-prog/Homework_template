@@ -2,12 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>과제 모음</title>
 
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
       width: 100%;
       height: 100%;
@@ -59,44 +63,63 @@
 
   <div id="menu">
 
+    <!-- Homework 1 -->
     <div
       class="menu-item"
-      onclick="openPage('Homework1/index.html')">
+      onclick="openPage('Homework1/index.html')"
+    >
       Homework1
     </div>
 
+
+    <!-- Homework 2 -->
     <div
       class="menu-item"
-      onclick="toggleLevels()">
+      onclick="toggleLevels()"
+    >
       Homework2
     </div>
 
     <div id="levels">
-      <div onclick="openPage('Homework2/Level1/index.html')">
+
+      <div
+        onclick="openPage('Homework2/Level1/index.html')"
+      >
         Level1
       </div>
 
-      <div onclick="openPage('Homework2/Level2/index.html')">
+      <div
+        onclick="openPage('Homework2/Level2/index.html')"
+      >
         Level2
       </div>
 
-      <div onclick="openPage('Homework2/Level3/index.html')">
+      <div
+        onclick="openPage('Homework2/Level3/index.html')"
+      >
         Level3
       </div>
+
     </div>
 
+
+    <!-- Homework 3 -->
     <div
       class="menu-item"
-      onclick="openPage('Homework3/index.html')">
+      onclick="openPage('Homework3/index.html')"
+    >
       Homework3
     </div>
 
   </div>
 
+
+  <!-- 默认打开 Homework1 -->
   <iframe
     id="viewer"
-    src="Homework2/Level1/index.html">
-  </iframe>
+    src="Homework1/index.html"
+  ></iframe>
+
 
   <script>
 
@@ -104,13 +127,20 @@
       document.getElementById("viewer").src = path;
     }
 
+
     function toggleLevels() {
-      const levels = document.getElementById("levels");
+
+      const levels =
+        document.getElementById("levels");
 
       if (levels.style.display === "block") {
+
         levels.style.display = "none";
+
       } else {
+
         levels.style.display = "block";
+
       }
     }
 

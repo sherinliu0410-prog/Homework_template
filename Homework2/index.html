@@ -1,51 +1,269 @@
 <!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
-    />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+  />
 
-    <title>Level 1 - Bath Bomb</title>
+  <title>과제 모음</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.min.js"></script>
+  <style>
 
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        overflow: hidden;
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+
+      font-family: sans-serif;
+    }
+
+
+    /* =====================================================
+       LEFT MENU
+       ===================================================== */
+
+    #menu {
+
+      position: fixed;
+
+      top: 0;
+      left: 0;
+
+      width: 150px;
+      height: 100%;
+
+      padding: 20px;
+
+      box-sizing: border-box;
+
+      background: #ffffff;
+
+      overflow-y: auto;
+    }
+
+
+    /* =====================================================
+       MAIN HOMEWORK BUTTON
+       ===================================================== */
+
+    #menu a {
+
+      display: block;
+
+      margin-bottom: 10px;
+
+      cursor: pointer;
+
+      color: blue;
+
+      text-decoration: none;
+    }
+
+
+    /* =====================================================
+       LEVEL MENU
+       ===================================================== */
+
+    .levels {
+
+      display: none;
+
+      margin-left: 15px;
+
+      margin-top: -5px;
+
+      margin-bottom: 10px;
+    }
+
+
+    .levels a {
+
+      margin-bottom: 8px;
+
+      font-size: 14px;
+    }
+
+
+    /* =====================================================
+       RIGHT CONTENT
+       ===================================================== */
+
+    #stage {
+
+      position: fixed;
+
+      top: 0;
+      right: 0;
+      bottom: 0;
+
+      left: 150px;
+
+      overflow: hidden;
+    }
+
+
+    #viewer {
+
+      display: block;
+
+      width: 100%;
+      height: 100%;
+
+      border: 0;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!-- =====================================================
+       MENU
+       ===================================================== -->
+
+  <div id="menu">
+
+
+    <!-- Homework 1 -->
+
+    <a onclick="loadHomework('Homework1')">
+      Homework1
+    </a>
+
+
+    <!-- Homework 2 -->
+
+    <a onclick="toggleHomework2()">
+      Homework2
+    </a>
+
+
+    <!-- Level 1 / 2 / 3 -->
+
+    <div
+      id="homework2Levels"
+      class="levels"
+    >
+
+      <a onclick="loadLevel('Homework2/Level1')">
+        Level1
+      </a>
+
+      <a onclick="loadLevel('Homework2/Level2')">
+        Level2
+      </a>
+
+      <a onclick="loadLevel('Homework2/Level3')">
+        Level3
+      </a>
+
+    </div>
+
+
+    <!-- Homework 3 -->
+
+    <a onclick="loadHomework('Homework3')">
+      Homework3
+    </a>
+
+
+  </div>
+
+
+  <!-- =====================================================
+       VIEWER
+       ===================================================== -->
+
+  <div id="stage">
+
+    <iframe
+      id="viewer"
+      src="Homework1/index.html"
+    ></iframe>
+
+  </div>
+
+
+  <!-- =====================================================
+       JAVASCRIPT
+       ===================================================== -->
+
+  <script>
+
+
+    // -----------------------------------------------------
+    // Homework 1 / Homework 3
+    // -----------------------------------------------------
+
+    function loadHomework(folderName) {
+
+      document.getElementById(
+        "viewer"
+      ).src =
+        folderName +
+        "/index.html";
+
+    }
+
+
+    // -----------------------------------------------------
+    // Homework 2 展开 / 收起
+    // -----------------------------------------------------
+
+    function toggleHomework2() {
+
+      const levels =
+        document.getElementById(
+          "homework2Levels"
+        );
+
+
+      if (
+        levels.style.display === "block"
+      ) {
+
+        levels.style.display =
+          "none";
+
+      } else {
+
+        levels.style.display =
+          "block";
+
       }
 
-      body {
-        touch-action: none;
-        overscroll-behavior: none;
-        -webkit-user-select: none;
-        user-select: none;
-        -webkit-touch-callout: none;
-      }
+    }
 
-      canvas {
-        display: block;
-        touch-action: none;
-      }
-    </style>
-  </head>
 
-  <body>
-    <script>
-      document.addEventListener(
-        "touchmove",
-        function (e) {
-          e.preventDefault();
-        },
-        { passive: false },
-      );
-    </script>
+    // -----------------------------------------------------
+    // Level 1 / Level 2 / Level 3
+    // -----------------------------------------------------
 
-    <script src="sketch.js"></script>
-  </body>
+    function loadLevel(folderName) {
+
+      document.getElementById(
+        "viewer"
+      ).src =
+        folderName +
+        "/index.html";
+
+    }
+
+
+  </script>
+
+
+</body>
 </html>

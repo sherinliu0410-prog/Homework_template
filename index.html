@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
@@ -63,7 +64,6 @@
 
   <div id="menu">
 
-    <!-- Homework 1 -->
     <div
       class="menu-item"
       onclick="openPage('Homework1/index.html')"
@@ -71,8 +71,6 @@
       Homework1
     </div>
 
-
-    <!-- Homework 2 -->
     <div
       class="menu-item"
       onclick="toggleLevels()"
@@ -102,8 +100,6 @@
 
     </div>
 
-
-    <!-- Homework 3 -->
     <div
       class="menu-item"
       onclick="openPage('Homework3/index.html')"
@@ -114,17 +110,21 @@
   </div>
 
 
-  <!-- 默认打开 Homework1 -->
-  <iframe
-    id="viewer"
-    src="Homework1/index.html"
-  ></iframe>
+  <iframe id="viewer"></iframe>
 
 
   <script>
 
+    // 网站打开时，默认加载 Homework1
+    window.addEventListener("load", function () {
+      document.getElementById("viewer").src =
+        "Homework1/index.html?v=2";
+    });
+
+
     function openPage(path) {
-      document.getElementById("viewer").src = path;
+      document.getElementById("viewer").src =
+        path;
     }
 
 

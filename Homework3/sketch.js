@@ -12,7 +12,8 @@ const IMPORTANCE_CREAM_COLORS = { 1: "#DCEBFA", 2: "#FADCE5", 3: "#FFF0C9" };
 const CAKE_RIM_SLOT_COUNT = 16;
 const MAX_CAKE_RIM_CREAMS = 32;
 const CREAM_VISUAL_SCALE = 0.88;
-const CREAM_HIT_AREA_SCALE = 1.12;
+// A forgiving touch target around frosting; this does not change its appearance.
+const CREAM_HIT_AREA_SCALE = 1.28;
 const CAKE_SLICE_SPAN_SCALE = 0.9;
 // Interleave opposite sides first, then fill the gaps around the rim.
 const CAKE_RIM_SLOT_ORDER = [
@@ -49,6 +50,9 @@ let editingMemoId = null;
 let storageReadFailed = false;
 let storageWriteFailed = false;
 let cakeCapacityMessage = "";
+let currentInteractionHint = "";
+let quickGuideStep = "create";
+let quickGuideDismissed = false;
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("canvasWrap");
@@ -57,6 +61,7 @@ function setup() {
   loadData();
   fallingCubes = [];
   restorePipedCreamsFromMemos();
+  initializeQuickGuide();
   activePipe = null;
   calculateCoffeeLayout();
   setupUI();
@@ -96,6 +101,64 @@ function draw() {
   if (celebrationState === "normal") drawPipingBag();
   updateAndDrawFireworks();
   updateFallingCubes();
+  updateInteractionHint();
+}
+function updateInteractionHint() {
+  const guide = document.getElementById("interactionHint");
+  const hint = document.getElementById("interactionHintText");
+  if (!guide || !hint) return;
+  if (quickGuideDismissed) {
+    guide.hidden = true;
+    return;
+  }
+  const messages = {
+    create: "1. Create a memo from the menu.",
+    pipe: "2. Tap the piping bag to add cream.",
+    complete: "3. In Browse, check the memo when it is done.",
+    candle: "4. Tap the candle for fireworks.",
+  };
+  const message = messages[quickGuideStep] || messages.create;
+  guide.hidden = false;
+  if (message !== currentInteractionHint) {
+    hint.textContent = message;
+    currentInteractionHint = message;
+  }
+}
+function initializeQuickGuide() {
+  // Guide dismissal is temporary for this completed flow, not permanent across
+  // page reloads. Restore a concise next-step hint from the saved memo state.
+  quickGuideDismissed = false;
+  quickGuideStep = "create";
+  currentInteractionHint = "";
+  if (
+    memos.some(
+      (memo) =>
+        !memo.archived && !memo.completed && !memo.piped && !memo.settled,
+    )
+  ) {
+    quickGuideStep = "pipe";
+  } else if (
+    memos.some((memo) => !memo.archived && !memo.completed && memo.piped)
+  ) {
+    quickGuideStep = "complete";
+  }
+}
+function restartQuickGuide(step = "create") {
+  quickGuideDismissed = false;
+  quickGuideStep = step;
+  currentInteractionHint = "";
+  const guide = document.getElementById("interactionHint");
+  if (guide) guide.hidden = false;
+}
+function setQuickGuideStep(step) {
+  if (quickGuideDismissed) return;
+  quickGuideStep = step;
+  currentInteractionHint = "";
+}
+function hideQuickGuide() {
+  quickGuideDismissed = true;
+  const guide = document.getElementById("interactionHint");
+  if (guide) guide.hidden = true;
 }
 function drawCakeScene() {
   const rotation = activeCakeRotation();
@@ -958,6 +1021,7 @@ function updatePipedCreams() {
           memo.piped = true;
           memo.creamColor = cream.color;
           memo.creamSeed = cream.seed;
+          setQuickGuideStep("complete");
           saveData();
           renderMemoList();
         }
@@ -1425,18 +1489,20 @@ function pointHitsCenterCandle(x, y) {
   if (celebrationState !== "candle") return false;
   const candle = centerCandleGeometry();
   return (
-    x >= candle.x - candle.width * 1.2 &&
-    x <= candle.x + candle.width * 1.2 &&
-    y >= candle.topY - candle.width * 2.1 &&
-    y <= candle.bottomY + 5
+    x >= candle.x - candle.width * 1.5 &&
+    x <= candle.x + candle.width * 1.5 &&
+    y >= candle.topY - candle.width * 2.4 &&
+    y <= candle.bottomY + 12
   );
 }
 function requestCompletionCelebration() {
+  setQuickGuideStep("candle");
   if (celebrationState === "normal") celebrationState = "candle";
   else queuedCelebrations += 1;
 }
 function startFireworks() {
   if (celebrationState !== "candle" || fireworks.length > 0) return;
+  hideQuickGuide();
   celebrationState = "fireworks";
   const palette = ["#F4B8C7", "#F7D98B", "#D9D2EF", "#B8CFF0", "#D7C1EA"];
   const candle = centerCandleGeometry();
@@ -1600,15 +1666,18 @@ function pointHitsPipingBag(mx, my) {
   const s = Math.sin(g.angle);
   const lx = dx * c + dy * s;
   const ly = -dx * s + dy * c;
-  if (lx < -g.length * 0.06 || lx > g.length * 1.0) return false;
+  // Expand the invisible hit target for fingertips without changing the bag.
+  const hitSlop = Math.max(10, g.width * 0.11);
+  if (lx < -g.length * 0.06 - hitSlop || lx > g.length * 1.0 + hitSlop)
+    return false;
   if (lx <= g.length * 0.2) {
     const nozzleHalfWidth =
       g.width * (0.035 + 0.075 * ((lx + g.length * 0.06) / (g.length * 0.26)));
-    return Math.abs(ly) <= nozzleHalfWidth;
+    return Math.abs(ly) <= nozzleHalfWidth + hitSlop;
   }
   const t = constrain((lx - g.length * 0.16) / (g.length * 0.8), 0, 1);
   const bodyHalfWidth = g.width * (0.105 + 0.37 * Math.sin(t * Math.PI * 0.5));
-  return Math.abs(ly) <= bodyHalfWidth;
+  return Math.abs(ly) <= bodyHalfWidth + hitSlop;
 }
 function startPipingMemo(targetAngle = pipingBagAngle) {
   if (activePipe && !activePipe.complete) return;
@@ -1616,9 +1685,18 @@ function startPipingMemo(targetAngle = pipingBagAngle) {
     (m) => !m.archived && !m.piped && !m.completed && !m.settled,
   );
   if (!memo) {
+    restartQuickGuide("create");
     const panel = document.getElementById("menuPanel");
     const formSection = document.getElementById("memoFormSection");
-    if (panel) panel.classList.add("open");
+    if (panel) {
+      panel.classList.add("open");
+      panel.setAttribute("aria-hidden", "false");
+    }
+    document.getElementById("overlay")?.classList.add("open");
+    document.getElementById("menuButton")?.classList.add("active");
+    document
+      .getElementById("menuButton")
+      ?.setAttribute("aria-expanded", "true");
     if (formSection) formSection.classList.remove("hidden");
     const title = document.getElementById("memoTitle");
     if (title) title.focus();
@@ -1633,6 +1711,8 @@ function startPipingMemo(targetAngle = pipingBagAngle) {
   }
   cakeCapacityMessage = "";
   const { slot } = nextPosition;
+  // Align the nozzle tip with the exact rim position where this cream lands.
+  pipingBagAngle = cakeCreamAngleForSlot(slot);
   const cream = {
     id: `cream-${memo.id}`,
     memoId: memo.id,
@@ -1745,6 +1825,7 @@ function restoreArchivedMemos() {
   restoreMode = true;
   const formSection = document.getElementById("memoFormSection");
   const listSection = document.getElementById("memoListSection");
+  listSection?.classList.add("restore-mode");
   if (formSection) formSection.classList.add("hidden");
   if (listSection) listSection.classList.add("visible");
   const listTitle = listSection
@@ -1942,8 +2023,21 @@ function pointerPressed(pointerX, pointerY) {
   lastPointerY = pointerY;
   const local = screenToCake(pointerX, pointerY);
   let target = null;
+  // Resolve front-most controls before nearby cream targets. This is especially
+  // important on touch screens, where a fingertip can cover several hit areas.
+  if (
+    celebrationState === "candle" &&
+    pointHitsCenterCandle(local.x, local.y)
+  ) {
+    target = { type: "candle" };
+  } else if (
+    celebrationState === "normal" &&
+    pointHitsPipingBag(pointerX, pointerY)
+  ) {
+    target = { type: "bag" };
+  }
   const visibleCreams = orderedPipedCreams();
-  for (let i = visibleCreams.length - 1; i >= 0; i--) {
+  for (let i = visibleCreams.length - 1; !target && i >= 0; i--) {
     const cream = visibleCreams[i];
     const memo = memos.find((item) => item.id === cream.memoId);
     if (!memo || memo.archived) continue;
@@ -1951,15 +2045,6 @@ function pointerPressed(pointerX, pointerY) {
       target = { type: "cream", memoId: memo.id, cream };
       break;
     }
-  }
-  if (
-    !target &&
-    celebrationState === "normal" &&
-    pointHitsPipingBag(pointerX, pointerY)
-  ) {
-    target = { type: "bag" };
-  } else if (!target && pointHitsCenterCandle(local.x, local.y)) {
-    target = { type: "candle" };
   }
   cakeGesture = {
     startX: pointerX,
@@ -1985,8 +2070,8 @@ function pointerDragged(pointerX, pointerY) {
         ? 12
         : cakeGesture.target?.type === "bag" ||
             cakeGesture.target?.type === "candle"
-          ? 14
-          : 8;
+          ? 16
+          : 18;
     if (!cakeGesture.moved && distance > movementThreshold) {
       cakeGesture.moved = true;
       cakeGesture.mode =
@@ -1994,7 +2079,7 @@ function pointerDragged(pointerX, pointerY) {
           ? "cream"
           : cakeGesture.target?.type === "bag"
             ? "bag"
-            : "rotate";
+            : "none";
       if (cakeGesture.mode === "cream")
         updateCreamDragPreview(cakeGesture, pointerX, pointerY);
     }
@@ -2003,8 +2088,6 @@ function pointerDragged(pointerX, pointerY) {
         updateCreamDragPreview(cakeGesture, pointerX, pointerY);
       } else if (cakeGesture.mode === "bag") {
         updatePipingBagDrag(pointerX, pointerY);
-      } else {
-        setCakeRotation(cakeRotation + (pointerX - cakeGesture.lastX) * 0.008);
       }
       cakeGesture.lastX = pointerX;
       cakeGesture.lastY = pointerY;
@@ -2050,7 +2133,7 @@ function pointerReleased(pointerX, pointerY) {
     cakeGesture = null;
     if (gesture.moved) {
       if (gesture.mode === "cream") commitCreamDrag(gesture);
-      else {
+      else if (gesture.mode === "bag") {
         creamDragPreview = null;
         saveData();
       }
@@ -2226,6 +2309,7 @@ function saveData() {
 function setupUI() {
   updateCategoryOptions();
   updateFilterCategoryOptions();
+  setupCustomSelects();
   setupMenu();
   setupMemoForm();
   setupFilters();
@@ -2233,6 +2317,96 @@ function setupUI() {
   setupDetailModal();
   renderMemoList();
   updateProgressInfo();
+}
+function setupCustomSelects() {
+  const controls = [...document.querySelectorAll("[data-select-control]")];
+  const closeAll = (except = null) => {
+    for (const control of controls) {
+      if (control === except) continue;
+      control.classList.remove("open");
+      control
+        .querySelector(".select-trigger")
+        ?.setAttribute("aria-expanded", "false");
+    }
+  };
+  const refresh = (control) => {
+    const id = control.dataset.selectControl;
+    const select = document.getElementById(id);
+    const trigger = control.querySelector(".select-trigger");
+    const value = control.querySelector(".select-value");
+    const options = control.querySelector(".select-options");
+    if (!select || !trigger || !value || !options) return;
+    const selected = [...select.options].find(
+      (option) => option.value === select.value,
+    );
+    value.textContent = selected?.textContent || "Select an option";
+    const label = document
+      .querySelector(`label[for="${id}"]`)
+      ?.textContent?.trim();
+    if (label && !trigger.hasAttribute("aria-label")) {
+      trigger.setAttribute("aria-label", label);
+    }
+    options.replaceChildren();
+    for (const option of select.options) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "select-option";
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", String(option.value === select.value));
+      item.textContent = option.textContent;
+      item.addEventListener("click", () => {
+        select.value = option.value;
+        select.dispatchEvent(new Event("input", { bubbles: true }));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        refresh(control);
+        control.classList.remove("open");
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.focus({ preventScroll: true });
+      });
+      options.appendChild(item);
+    }
+  };
+  for (const control of controls) {
+    const id = control.dataset.selectControl;
+    const select = document.getElementById(id);
+    const trigger = control.querySelector(".select-trigger");
+    if (!select || !trigger) continue;
+    refresh(control);
+    select.addEventListener("change", () => refresh(control));
+    trigger.addEventListener("click", () => {
+      const opening = !control.classList.contains("open");
+      closeAll(control);
+      control.classList.toggle("open", opening);
+      trigger.setAttribute("aria-expanded", String(opening));
+    });
+    trigger.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeAll();
+        trigger.focus();
+      } else if (
+        event.key === "ArrowDown" ||
+        event.key === "Enter" ||
+        event.key === " "
+      ) {
+        event.preventDefault();
+        control.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+        control.querySelector(".select-options .select-option")?.focus();
+      }
+    });
+    control
+      .querySelector(".select-options")
+      ?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeAll();
+          trigger.focus();
+        }
+      });
+  }
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest("[data-select-control]")) closeAll();
+  });
+  window.refreshMemoSelects = () => controls.forEach(refresh);
 }
 function setupMenu() {
   const menuButton = document.getElementById("menuButton");
@@ -2245,6 +2419,14 @@ function setupMenu() {
   const cancelButton = document.getElementById("cancelForm");
   const formSection = document.getElementById("memoFormSection");
   const listSection = document.getElementById("memoListSection");
+  // Keep panel interactions local. Do not prevent the browser's default action:
+  // text editing and native select pickers must remain available on touch devices.
+  menuPanel?.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  menuPanel?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
   const closeMenu = () => {
     if (menuPanel) menuPanel.classList.remove("open");
     if (overlay) overlay.classList.remove("open");
@@ -2258,6 +2440,7 @@ function setupMenu() {
     menuButton.addEventListener("click", () => {
       if (menuPanel) menuPanel.classList.toggle("open");
       if (overlay) overlay.classList.toggle("open");
+      const isOpen = Boolean(menuPanel?.classList.contains("open"));
       menuButton.classList.toggle("active");
       menuButton.setAttribute(
         "aria-expanded",
@@ -2272,7 +2455,9 @@ function setupMenu() {
   if (menuClose) menuClose.addEventListener("click", closeMenu);
   if (overlay) overlay.addEventListener("click", closeMenu);
   const openMemoForm = () => {
+    restartQuickGuide("create");
     restoreMode = false;
+    listSection?.classList.remove("restore-mode");
     editingMemoId = null;
     const idInput = document.getElementById("memoId");
     const heading = document.getElementById("formHeading");
@@ -2280,6 +2465,7 @@ function setupMenu() {
     if (idInput) idInput.value = "";
     if (heading) heading.textContent = "NEW MEMO";
     if (form) form.reset();
+    window.refreshMemoSelects?.();
     listSection?.classList.remove("visible");
     formSection?.classList.remove("hidden");
     menuPanel?.classList.add("open");
@@ -2297,9 +2483,9 @@ function setupMenu() {
   if (browseButton)
     browseButton.addEventListener("click", () => {
       restoreMode = false;
+      listSection?.classList.remove("restore-mode");
       editingMemoId = null;
       formSection?.classList.add("hidden");
-      const listSection = document.getElementById("memoListSection");
       listSection?.classList.add("visible");
       const heading = listSection?.querySelector(".section-title");
       if (heading) heading.textContent = "YOUR MEMOS";
@@ -2311,6 +2497,7 @@ function setupMenu() {
     cancelButton.addEventListener("click", () => {
       const form = document.getElementById("memoForm");
       if (form) form.reset();
+      window.refreshMemoSelects?.();
       editingMemoId = null;
       document.getElementById("memoId").value = "";
       document.getElementById("formHeading").textContent = "NEW MEMO";
@@ -2373,6 +2560,7 @@ function setupMemoForm() {
         cubeY: coffee.cupTopY - 10,
         cubeAngle: random(-0.1, 0.1),
       });
+      setQuickGuideStep("pipe");
     }
     editingMemoId = null;
     if (memoIdInput) memoIdInput.value = "";
@@ -2391,9 +2579,14 @@ function setupFilters() {
     document.getElementById(id)?.addEventListener("change", renderMemoList);
 }
 function setupSearch() {
-  document
-    .getElementById("memoSearch")
-    ?.addEventListener("input", renderMemoList);
+  const searchInput = document.getElementById("memoSearch");
+  if (!searchInput) return;
+
+  // Explicitly focus on touch so iPad Safari shows the caret and keyboard.
+  searchInput.addEventListener("pointerdown", () => {
+    searchInput.focus({ preventScroll: true });
+  });
+  searchInput.addEventListener("input", renderMemoList);
 }
 function updateProgressInfo() {
   const element = document.getElementById("progressInfo");
@@ -2447,6 +2640,7 @@ function setupDetailModal() {
       document.getElementById("memoImportance").value = String(
         memo.importance || 2,
       );
+      window.refreshMemoSelects?.();
       document.getElementById("memoScheduledAt").value = toLocalDateTimeValue(
         memo.scheduledAt,
       );
@@ -2730,6 +2924,7 @@ function updateCategoryOptions() {
     categorySelect.appendChild(option);
   }
   if (categories.includes(currentValue)) categorySelect.value = currentValue;
+  window.refreshMemoSelects?.();
 }
 function updateFilterCategoryOptions() {
   const categorySelect = document.getElementById("memoCategoryFilter");
@@ -2749,6 +2944,7 @@ function updateFilterCategoryOptions() {
   categorySelect.value = categories.includes(currentValue)
     ? currentValue
     : "all";
+  window.refreshMemoSelects?.();
 }
 function addCategory(name) {
   const category = name.trim();

@@ -1,1 +1,149 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
 
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+    />
+
+    <title>과제 모음</title>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        overscroll-behavior: none;
+
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+
+        font-family: sans-serif;
+      }
+
+      /* 左侧菜单 */
+      #menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+
+        width: 150px;
+        height: 100%;
+
+        padding: 20px;
+        box-sizing: border-box;
+
+        background: #fff;
+      }
+
+      /* Homework */
+      .homework {
+        display: block;
+
+        margin-bottom: 12px;
+
+        cursor: pointer;
+        color: blue;
+      }
+
+      /* Level 子菜单 */
+      .levels {
+        display: none;
+
+        margin-top: -4px;
+        margin-left: 18px;
+        margin-bottom: 14px;
+      }
+
+      .levels a {
+        display: block;
+
+        margin-bottom: 8px;
+
+        cursor: pointer;
+        color: #777;
+
+        font-size: 14px;
+      }
+
+      .levels a:hover {
+        color: blue;
+      }
+
+      /* 右侧 iframe */
+      #stage {
+        position: fixed;
+
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 150px;
+
+        overflow: hidden;
+      }
+
+      #viewer {
+        display: block;
+
+        width: 100%;
+        height: 100%;
+
+        border: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="menu">
+      <!-- Homework 1 -->
+      <div class="homework" onclick="loadHomework('Homework1')">Homework1</div>
+
+      <!-- Homework 2 -->
+      <div class="homework" onclick="toggleHomework2()">Homework2</div>
+
+      <!-- Homework 2 的 Level -->
+      <div id="homework2Levels" class="levels">
+        <a onclick="loadLevel('Homework2/Level1')"> Level1 </a>
+
+        <a onclick="loadLevel('Homework2/Level2')"> Level2 </a>
+
+        <a onclick="loadLevel('Homework2/Level3')"> Level3 </a>
+      </div>
+
+      <!-- Homework 3 -->
+      <div class="homework" onclick="loadHomework('Homework3')">Homework3</div>
+    </div>
+
+    <div id="stage">
+      <!-- 默认显示 Homework1 -->
+      <iframe id="viewer" src="Homework1/index.html"></iframe>
+    </div>
+
+    <script>
+      /* 点击 Homework */
+      function loadHomework(folderName) {
+        document.getElementById("viewer").src = folderName + "/index.html";
+      }
+
+      /* 展开 / 收起 Homework2 */
+      function toggleHomework2() {
+        const levels = document.getElementById("homework2Levels");
+
+        if (levels.style.display === "block") {
+          levels.style.display = "none";
+        } else {
+          levels.style.display = "block";
+        }
+      }
+
+      /* 点击 Level */
+      function loadLevel(folderName) {
+        document.getElementById("viewer").src = folderName + "/index.html";
+      }
+    </script>
+  </body>
+</html>

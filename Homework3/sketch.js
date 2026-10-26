@@ -34,7 +34,8 @@ let selectedCakeSlice = null;
 let restoreMode = false;
 let fireworks = [];
 let celebrationState = "normal";
-let queuedCelebrations = 0;
+let celebratingMemoId = null;
+let queuedCelebrationMemoIds = [];
 let cakeRotation = 0;
 // p5 constants such as HALF_PI are only available after p5 initializes.
 // Use the native value here so top-level initialization cannot throw.
@@ -316,13 +317,18 @@ function activeCakeRotation() {
   return 0;
 }
 function orderedPipedCreams() {
-  return [...pipedCreams].sort((a, b) => {
-    const aPlacement = cakeCreamPlacement(a.slot || 0, a.importance);
-    const bPlacement = cakeCreamPlacement(b.slot || 0, b.importance);
-    const aY = cakeToScreen(aPlacement.x, aPlacement.y).y;
-    const bY = cakeToScreen(bPlacement.x, bPlacement.y).y;
-    return aY - bY;
-  });
+  return pipedCreams
+    .filter((cream) => {
+      const memo = memos.find((item) => item.id === cream.memoId);
+      return memo && !memo.archived && !memo.completed;
+    })
+    .sort((a, b) => {
+      const aPlacement = cakeCreamPlacement(a.slot || 0, a.importance);
+      const bPlacement = cakeCreamPlacement(b.slot || 0, b.importance);
+      const aY = cakeToScreen(aPlacement.x, aPlacement.y).y;
+      const bY = cakeToScreen(bPlacement.x, bPlacement.y).y;
+      return aY - bY;
+    });
 }
 function calculateCoffeeLayout() {
   const scale = Math.min(width / 1050, height / 850, 1.2);
@@ -1495,10 +1501,14 @@ function pointHitsCenterCandle(x, y) {
     y <= candle.bottomY + 12
   );
 }
-function requestCompletionCelebration() {
+function requestCompletionCelebration(memoId) {
   setQuickGuideStep("candle");
-  if (celebrationState === "normal") celebrationState = "candle";
-  else queuedCelebrations += 1;
+  if (celebrationState === "normal") {
+    celebratingMemoId = memoId;
+    celebrationState = "candle";
+  } else {
+    queuedCelebrationMemoIds.push(memoId);
+  }
 }
 function startFireworks() {
   if (celebrationState !== "candle" || fireworks.length > 0) return;
@@ -1556,10 +1566,13 @@ function updateAndDrawFireworks() {
     ellipse(particle.x, particle.y, particle.size, particle.size);
   }
   if (celebrationState === "fireworks" && fireworks.length === 0) {
-    if (queuedCelebrations > 0) {
-      queuedCelebrations -= 1;
+    if (queuedCelebrationMemoIds.length > 0) {
+      celebratingMemoId = queuedCelebrationMemoIds.shift();
       celebrationState = "candle";
-    } else celebrationState = "normal";
+    } else {
+      celebratingMemoId = null;
+      celebrationState = "normal";
+    }
   }
 }
 function pointHitsPipedCream(x, y, cream) {
@@ -2815,7 +2828,9 @@ function renderMemoList() {
       check.addEventListener("change", () => {
         const wasCompleted = Boolean(memo.completed);
         memo.completed = check.checked;
-        if (!wasCompleted && memo.completed) requestCompletionCelebration();
+        if (!wasCompleted && memo.completed) {
+          requestCompletionCelebration(memo.id);
+        }
         saveData();
         updateProgressInfo();
         if (selectedMemoId === memo.id) refreshMemoDetail(memo);
